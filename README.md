@@ -310,10 +310,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## 💬 Community
 
-- **Discord**: [Join our server](https://discord.gg/chord)
-- **Twitter**: [@chord_lang](https://twitter.com/chord_lang)
-- **Blog**: [chord-lang.dev/blog](https://chord-lang.dev/blog)
-- **Office Hours**: Thursdays 3pm PST
+Community channels coming soon! Star the repository to stay updated.
 
 ## 📄 License
 
@@ -329,6 +326,6 @@ CHORD builds on insights from the prompt engineering community while introducing
 
 **Ready to orchestrate your LLMs?**
 
-[Get Started](./docs/quickstart.md) • [Join Discord](https://discord.gg/chord) • [Star on GitHub](https://github.com/yourusername/chord)
+[Get Started](./CHORD_EXAMPLES.md) • [Star on GitHub](https://github.com/ccc4096/chord)
 
 </div>

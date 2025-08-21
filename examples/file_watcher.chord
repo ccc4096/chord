@@ -3,32 +3,32 @@
 # Context definitions - files that need to be read
 def ctx manifest {
   type: file
-  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/manifest.md"
+  uri: "fs:///path/to/project/manifest.md"
   tags: ["manifest", "project", "configuration"]
 }
 
 def ctx context_map {
   type: file
-  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/context_map.md"
+  uri: "fs:///path/to/project/common_libs/context_map.md"
   tags: ["documentation", "architecture", "map"]
 }
 
 def ctx lib_registry {
   type: file
-  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/lib_registry.md"
+  uri: "fs:///path/to/project/lib_registry.md"
   tags: ["registry", "libraries", "dependencies"]
 }
 
 def ctx file_watcher_project {
   type: dir
-  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/file_watcher"
+  uri: "fs:///path/to/project/common_libs/file_watcher"
   include: ["**/*.cpp", "**/*.h", "**/*.hpp", "**/CMakeLists.txt"]
   exclude: ["**/build/**", "**/bin/**"]
 }
 
 def ctx test_directory {
   type: dir
-  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/file_watcher/test"
+  uri: "fs:///path/to/project/common_libs/file_watcher/test"
   include: ["**/*.cpp", "**/*.h"]
 }
 
@@ -116,7 +116,7 @@ def signal unique_id {
 }
 
 def signal main_path {
-  value: "/Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid"
+  value: "/path/to/project"
 }
 
 # Task definitions
