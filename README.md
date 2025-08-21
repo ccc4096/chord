@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange.svg)](https://github.com/yourusername/chord)
+[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange.svg)](https://github.com/ccc4096/chord)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 **CHORD is not another prompt template language. It's a paradigm shift.**
@@ -91,7 +91,7 @@ def model local { provider: "ollama", id: "codellama", strengths: ["fast_iterati
 pip install chord-lang
 
 # Or from source
-git clone https://github.com/yourusername/chord.git
+git clone https://github.com/ccc4096/chord.git
 cd chord
 pip install -e .
 ```
@@ -246,7 +246,7 @@ We welcome contributions! CHORD is in active development and we're excited to se
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/chord.git
+git clone https://github.com/ccc4096/chord.git
 cd chord
 
 # Install in development mode
