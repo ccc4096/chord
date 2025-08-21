@@ -1,0 +1,196 @@
+# code_analyzer.chord - Analyze and document code
+
+def ctx source_code {
+  type: dir
+  uri: "fs:///project/src"
+  include: ["**/*.py", "**/*.js"]
+  exclude: ["**/node_modules/**", "**/__pycache__/**"]
+}
+
+def ctx tests {
+  type: dir
+  uri: "fs:///project/tests"
+  include: ["**/*.test.py", "**/*.spec.js"]
+}
+
+def ctx documentation {
+  type: file
+  uri: "fs:///project/README.md"
+}
+
+def cap code_metrics {
+  type: command
+  bind: {
+    cmd: "radon cc -j"
+  }
+}
+
+def role code_reviewer {
+  persona: "experienced senior developer and code quality expert"
+  principles: [
+    "focus on maintainability",
+    "suggest practical improvements",
+    "consider performance implications",
+    "emphasize test coverage"
+  ]
+  expertise: ["Python", "JavaScript", "Design Patterns", "Testing"]
+}
+
+def policy code_review_policy {
+  resources: {
+    max_tokens: 8000
+    max_context_chars: 50000
+  }
+  privacy: [
+    "redact API keys and secrets",
+    "anonymize personal data"
+  ]
+}
+
+def model code_model {
+  provider: "anthropic"
+  id: "claude-3-opus-20240229"
+  temperature: 0.3
+  context_window: 200000
+}
+
+def task analyze_complexity {
+  objective: "Analyze code complexity and identify hotspots"
+  outputs: {
+    complexity_report: "object"
+    hotspots: "array<{file, function, complexity}>"
+    recommendations: "array<string>"
+  }
+}
+
+def task suggest_refactoring {
+  objective: "Suggest refactoring for complex code"
+  inputs: {
+    complexity_analysis: "@task.analyze_complexity.outputs"
+  }
+  outputs: {
+    refactoring_plan: "array<{target, technique, benefit}>"
+    code_examples: "array<{before, after}>"
+  }
+}
+
+def task generate_documentation {
+  objective: "Generate missing documentation"
+  outputs: {
+    docstrings: "array<{function, documentation}>"
+    readme_sections: "object"
+  }
+}
+
+def view complexity_analyzer {
+  task: @task.analyze_complexity
+  role: @role.code_reviewer
+  model: @model.code_model
+  policy: @policy.code_review_policy
+  
+  selectors: [
+    # Get source code files
+    {
+      from: @ctx.source_code,
+      op: "grep",
+      pattern: "def |function |class ",
+      context: 5
+    },
+    # Get test coverage
+    {
+      from: @ctx.tests,
+      op: "grep",
+      pattern: "test_|describe\\(|it\\(",
+      context: 2
+    },
+    # Extract README sections
+    {
+      from: @ctx.documentation,
+      op: "extract",
+      sections: ["Architecture", "Contributing"]
+    }
+  ]
+  
+  prompt: {
+    system: |
+      You are {{role.persona}} with expertise in {{role.expertise | join(", ")}}.
+      Analyze code for complexity, maintainability, and quality issues.
+      {{role.principles | bulletize}}
+    
+    developer: |
+      ## Source Code Samples
+      {{resolved_context.source_code}}
+      
+      ## Test Coverage
+      {{resolved_context.tests}}
+      
+      ## Project Documentation
+      {{resolved_context.documentation}}
+    
+    user: |
+      Analyze this codebase and:
+      1. Identify complexity hotspots (functions with cyclomatic complexity > 10)
+      2. Find code smells and anti-patterns
+      3. Assess test coverage gaps
+      4. Provide specific, actionable recommendations
+      
+      Focus on the most critical issues that impact maintainability.
+  }
+}
+
+def view refactoring_assistant {
+  task: @task.suggest_refactoring
+  role: @role.code_reviewer
+  model: @model.code_model
+  
+  selectors: [
+    # Get specific complex functions
+    {
+      from: @ctx.source_code,
+      op: "extract",
+      pattern: "{{complexity_analysis.hotspots | map('function') | join('|')}}"
+    }
+  ]
+  
+  prompt: {
+    system: |
+      You are an expert at refactoring complex code.
+      Suggest practical, incremental improvements.
+    
+    developer: |
+      ## Complexity Analysis
+      {{complexity_analysis | format_json}}
+      
+      ## Complex Functions
+      {{resolved_context.source_code}}
+    
+    user: |
+      For each complexity hotspot, suggest:
+      1. Specific refactoring technique (e.g., extract method, strategy pattern)
+      2. Step-by-step refactoring plan
+      3. Example of refactored code
+      4. Expected improvement in complexity and maintainability
+  }
+}
+
+def flow code_review_pipeline {
+  entry: @task.analyze_complexity
+  
+  edges: [
+    {
+      from: @task.analyze_complexity,
+      to: @task.suggest_refactoring,
+      condition: "hotspots.length > 0"
+    },
+    {
+      from: @task.analyze_complexity,
+      to: @task.generate_documentation,
+      condition: "missing_docs > 0"
+    }
+  ]
+  
+  parallel: [
+    @task.suggest_refactoring,
+    @task.generate_documentation
+  ]
+}

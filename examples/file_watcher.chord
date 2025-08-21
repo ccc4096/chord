@@ -1,0 +1,403 @@
+# file_watcher.chord - Example matching the original acPOML use case
+
+# Context definitions - files that need to be read
+def ctx manifest {
+  type: file
+  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/manifest.md"
+  tags: ["manifest", "project", "configuration"]
+}
+
+def ctx context_map {
+  type: file
+  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/context_map.md"
+  tags: ["documentation", "architecture", "map"]
+}
+
+def ctx lib_registry {
+  type: file
+  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/lib_registry.md"
+  tags: ["registry", "libraries", "dependencies"]
+}
+
+def ctx file_watcher_project {
+  type: dir
+  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/file_watcher"
+  include: ["**/*.cpp", "**/*.h", "**/*.hpp", "**/CMakeLists.txt"]
+  exclude: ["**/build/**", "**/bin/**"]
+}
+
+def ctx test_directory {
+  type: dir
+  uri: "fs:///Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid/common_libs/file_watcher/test"
+  include: ["**/*.cpp", "**/*.h"]
+}
+
+# Capability definitions
+def cap test_executable {
+  type: code_unit
+  language: "cpp"
+  bind: {
+    file: @ctx.test_directory
+    symbol: "test_basic_read.cpp"
+  }
+}
+
+def cap read_files_function {
+  type: function
+  language: "cpp"
+  bind: {
+    file: @ctx.test_directory
+    symbol: "read_files"
+    signature: "std::vector<std::string> read_files(std::string main_path, std::string date, std::string unique_id, std::vector<std::string>& filelist)"
+  }
+}
+
+def cap execute_tests {
+  type: command
+  bind: {
+    cmd: "cd {{test_directory}} && ./test_basic_read"
+  }
+}
+
+# Role definition
+def role cpp_systems_engineer {
+  persona: "expert C++17 systems engineer with 15+ years experience"
+  principles: [
+    "write production-quality, deterministic code",
+    "avoid undefined behavior at all costs",
+    "prefer std::filesystem for file operations",
+    "use RAII and smart pointers",
+    "write comprehensive error handling",
+    "document complex logic with clear comments"
+  ]
+  style: {
+    tone: "precise and technical"
+    code_style: ["modern_cpp", "const_correct", "exception_safe"]
+    documentation: "doxygen_compatible"
+  }
+  expertise: ["C++17", "STL", "filesystem", "cross-platform", "performance"]
+}
+
+# Policy definition
+def policy development {
+  resources: {
+    max_tokens: 32000
+    max_context_chars: 100000
+    timeout_ms: 120000
+  }
+  tools: {
+    allow: ["read", "analyze", "generate"]
+    deny: ["execute", "modify_system"]
+  }
+  code_standards: [
+    "ISO C++17 compliant",
+    "no raw pointers unless necessary",
+    "prefer algorithms over loops",
+    "handle all error cases"
+  ]
+}
+
+# Model configuration
+def model implementation_model {
+  provider: "anthropic"
+  id: "claude-3-opus-20240229"
+  temperature: 0.2  # Low temperature for consistent code generation
+  context_window: 200000
+  strengths: ["code_generation", "debugging", "optimization"]
+}
+
+# Signals (runtime values)
+def signal date {
+  value: "2025-08-16"
+}
+
+def signal unique_id {
+  value: "run_{{RANDOM_UUID}}"
+}
+
+def signal main_path {
+  value: "/Users/alperyilmaz/Documents/ARR_SOURCES/cyberdroid"
+}
+
+# Task definitions
+def task implement_read_files {
+  objective: "Implement the read_files function for file_watcher library"
+  priority: "high"
+  inputs: {
+    main_path: "std::string"
+    date: "std::string"
+    unique_id: "std::string"
+    filelist: "std::vector<std::string>&"
+  }
+  outputs: {
+    implementation: "cpp_code"
+    unit_tests: "cpp_code"
+    documentation: "markdown"
+  }
+  constraints: [
+    "use std::filesystem for directory traversal",
+    "handle UTF-8 paths correctly",
+    "return sorted, unique file paths",
+    "populate filelist parameter and return a copy",
+    "gracefully handle missing directories",
+    "no exceptions on non-critical errors",
+    "thread-safe implementation"
+  ]
+  success_criteria: {
+    compiles: true
+    no_warnings: true
+    handles_edge_cases: ["empty_dir", "missing_dir", "permission_denied", "circular_symlinks"]
+  }
+}
+
+def task validate_implementation {
+  objective: "Validate the read_files implementation"
+  inputs: {
+    implementation: "@task.implement_read_files.outputs.implementation"
+  }
+  outputs: {
+    compilation_result: "object"
+    test_results: "object"
+    performance_metrics: "object"
+  }
+}
+
+def task optimize_performance {
+  objective: "Optimize read_files for large directory trees"
+  inputs: {
+    implementation: "@task.implement_read_files.outputs.implementation"
+    metrics: "@task.validate_implementation.outputs.performance_metrics"
+  }
+  outputs: {
+    optimized_code: "cpp_code"
+    benchmark_comparison: "object"
+  }
+}
+
+# View definitions
+def view implement_read_files_view {
+  task: @task.implement_read_files
+  role: @role.cpp_systems_engineer
+  model: @model.implementation_model
+  policy: @policy.development
+  
+  selectors: [
+    # Get project manifest for build configuration
+    {
+      from: @ctx.manifest,
+      op: "extract",
+      sections: ["Build Configuration", "Dependencies", "Platform Support"]
+    },
+    # Get context map for understanding project structure
+    {
+      from: @ctx.context_map,
+      op: "summarize",
+      max_tokens: 500,
+      focus: "file organization and naming conventions"
+    },
+    # Get file_watcher library information
+    {
+      from: @ctx.lib_registry,
+      op: "extract",
+      pattern: "file_watcher.*"
+    },
+    # Get existing test file structure
+    {
+      from: @ctx.test_directory,
+      op: "head",
+      lines: 200
+    },
+    # Get file_watcher implementation patterns
+    {
+      from: @ctx.file_watcher_project,
+      op: "grep",
+      pattern: "std::filesystem|readdir|FindFirstFile",
+      context: 5
+    },
+    # Get function signature
+    {
+      from: @cap.read_files_function,
+      op: "signature"
+    }
+  ]
+  
+  prompt: {
+    system: |
+      You are {{role.persona}} with deep expertise in {{role.expertise | join(", ")}}.
+      
+      Your principles:
+      {{role.principles | bulletize}}
+      
+      Code standards to follow:
+      {{policy.code_standards | bulletize}}
+      
+      Today's date: {{signal.date}}
+      Unique run ID: {{signal.unique_id}}
+    
+    developer: |
+      ## Project Configuration
+      {{resolved_context.manifest}}
+      
+      ## Project Structure
+      {{resolved_context.context_map}}
+      
+      ## File Watcher Library Info
+      {{resolved_context.lib_registry}}
+      
+      ## Test File Structure
+      ```cpp
+      {{resolved_context.test_directory}}
+      ```
+      
+      ## Existing File System Patterns in Project
+      {{resolved_context.file_watcher_project}}
+      
+      ## Function Signature to Implement
+      ```cpp
+      {{resolved_context.read_files_function}}
+      ```
+    
+    user: |
+      Please implement the `read_files` function for the file_watcher library.
+      
+      Requirements:
+      1. Function signature: std::vector<std::string> read_files(std::string main_path, std::string date, std::string unique_id, std::vector<std::string>& filelist)
+      2. Use std::filesystem to traverse main_path recursively
+      3. Collect all file paths into the filelist parameter
+      4. Return a sorted, unique copy of the file paths
+      5. Handle UTF-8 paths correctly for cross-platform compatibility
+      6. Gracefully handle errors (missing directory, permissions, etc.)
+      7. The implementation should be thread-safe
+      8. Include appropriate logging using the project's logging framework
+      
+      The main_path is: {{signal.main_path}}
+      
+      Provide:
+      1. Complete implementation with detailed comments
+      2. Edge case handling
+      3. Example usage
+      4. Unit test cases
+  }
+  
+  response_format: {
+    type: "structured"
+    schema: {
+      implementation: {
+        includes: "array<string>"
+        function_body: "string"
+        helper_functions: "array<object>"
+      }
+      tests: {
+        test_cases: "array<{name, description, code}>"
+      }
+      documentation: {
+        description: "string"
+        parameters: "array<{name, type, description}>"
+        returns: "string"
+        exceptions: "array<string>"
+        example: "string"
+      }
+    }
+  }
+  
+  asserts: [
+    "uses std::filesystem",
+    "handles empty main_path",
+    "returns sorted vector",
+    "no raw pointers",
+    "includes error handling",
+    "is thread-safe"
+  ]
+}
+
+def view validate_implementation_view {
+  task: @task.validate_implementation
+  role: @role.cpp_systems_engineer
+  model: @model.implementation_model
+  
+  selectors: [
+    { from: @implementation, op: "extract" }
+  ]
+  
+  prompt: {
+    system: "You are a C++ code reviewer and testing expert."
+    
+    developer: |
+      ## Implementation to Validate
+      ```cpp
+      {{implementation}}
+      ```
+    
+    user: |
+      Review this implementation and:
+      1. Check for compilation errors
+      2. Identify potential bugs
+      3. Verify thread safety
+      4. Check error handling completeness
+      5. Suggest test cases
+  }
+}
+
+# Flow definition
+def flow implementation_pipeline {
+  entry: @task.implement_read_files
+  
+  edges: [
+    {
+      from: @task.implement_read_files,
+      to: @task.validate_implementation,
+      on: "success"
+    },
+    {
+      from: @task.validate_implementation,
+      to: @task.optimize_performance,
+      condition: "performance_metrics.execution_time > 1000"
+    }
+  ]
+  
+  error_handling: {
+    on_compilation_error: {
+      action: "retry_with_fixes"
+      max_attempts: 3
+    }
+    on_test_failure: {
+      action: "analyze_and_fix"
+    }
+  }
+  
+  final: {
+    task: @task.generate_pr_description
+    outputs: ["implementation", "tests", "documentation"]
+  }
+}
+
+# Memory for conversation context
+def memory implementation_session {
+  type: "task_focused"
+  retain: [
+    "requirements",
+    "implementation_decisions",
+    "error_fixes",
+    "optimization_notes"
+  ]
+  max_turns: 10
+}
+
+# Test definitions
+def test implementation_test {
+  view: @view.implement_read_files_view
+  mock_context: {
+    manifest: "# Build\nC++17 required\ncmake 3.16+",
+    lib_registry: "file_watcher: Cross-platform file system watcher"
+  }
+  expect: {
+    implementation: {
+      contains: ["std::filesystem", "try", "catch", "sort"]
+      not_contains: ["malloc", "new[]", "goto"]
+    }
+    tests: {
+      min_count: 5
+      covers: ["empty_dir", "missing_dir", "large_dir"]
+    }
+  }
+}

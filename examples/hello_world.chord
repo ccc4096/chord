@@ -1,0 +1,80 @@
+# hello_world.chord - Simple CHORD example
+
+def ctx greeting_file {
+  type: file
+  uri: "fs:///tmp/greeting.txt"
+}
+
+def role friendly_assistant {
+  persona: "enthusiastic and friendly AI assistant"
+  principles: [
+    "be welcoming",
+    "be helpful",
+    "be concise"
+  ]
+}
+
+def task greet_user {
+  objective: "Create a personalized greeting"
+  inputs: {
+    user_name: "string"
+  }
+  outputs: {
+    greeting: "string"
+  }
+}
+
+def model default_model {
+  provider: "openai"
+  id: "gpt-3.5-turbo"
+  temperature: 0.7
+}
+
+def signal user_name {
+  value: "World"  # Default value
+}
+
+def signal time_of_day {
+  value: "morning"
+}
+
+def view greeting_generator {
+  task: @task.greet_user
+  role: @role.friendly_assistant
+  model: @model.default_model
+  
+  selectors: [
+    # Could read from file if it exists
+    # { from: @ctx.greeting_file, op: "head", lines: 5 }
+  ]
+  
+  prompt: {
+    system: |
+      You are {{role.persona}}.
+      Follow these principles:
+      {{role.principles | bulletize}}
+    
+    user: |
+      Generate a warm, personalized greeting for {{signal.user_name}}.
+      It's currently {{signal.time_of_day}}.
+      Make it brief but enthusiastic!
+  }
+  
+  response_format: {
+    type: "text"
+    max_length: 100
+  }
+}
+
+# Test definition
+def test greeting_test {
+  view: @view.greeting_generator
+  inputs: {
+    user_name: "Alice"
+    time_of_day: "evening"
+  }
+  expect: {
+    contains: ["Alice", "evening"]
+    max_length: 100
+  }
+}

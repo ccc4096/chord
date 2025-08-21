@@ -1,0 +1,421 @@
+# multi_model_flow.chord - Advanced multi-model orchestration example
+
+# Model definitions with different strengths
+def model planner {
+  provider: "openai"
+  id: "gpt-4-turbo-preview"
+  temperature: 0.7
+  strengths: ["high_level_planning", "architecture", "strategy"]
+  cost_per_1k: { input: 0.01, output: 0.03 }
+}
+
+def model implementer {
+  provider: "anthropic"
+  id: "claude-3-opus-20240229"
+  temperature: 0.3
+  strengths: ["code_generation", "debugging", "detailed_implementation"]
+  cost_per_1k: { input: 0.015, output: 0.075 }
+}
+
+def model reviewer {
+  provider: "anthropic"
+  id: "claude-3-sonnet-20240229"
+  temperature: 0.2
+  strengths: ["code_review", "security_analysis", "best_practices"]
+  cost_per_1k: { input: 0.003, output: 0.015 }
+}
+
+def model documenter {
+  provider: "openai"
+  id: "gpt-3.5-turbo"
+  temperature: 0.5
+  strengths: ["documentation", "examples", "tutorials"]
+  cost_per_1k: { input: 0.0005, output: 0.0015 }
+}
+
+def model local_validator {
+  provider: "local"
+  id: "codellama-13b"
+  temperature: 0.1
+  strengths: ["syntax_checking", "quick_validation"]
+  cost_per_1k: { input: 0, output: 0 }
+}
+
+# Context sources
+def ctx requirements {
+  type: file
+  uri: "fs:///project/requirements.md"
+}
+
+def ctx existing_code {
+  type: dir
+  uri: "fs:///project/src"
+  include: ["**/*.py"]
+}
+
+def ctx tests {
+  type: dir
+  uri: "fs:///project/tests"
+  include: ["**/*.test.py"]
+}
+
+# Roles for different stages
+def role architect {
+  persona: "software architect with 20 years experience"
+  principles: [
+    "design for scalability",
+    "minimize coupling",
+    "maximize cohesion",
+    "consider future requirements"
+  ]
+}
+
+def role developer {
+  persona: "senior full-stack developer"
+  principles: [
+    "write clean, maintainable code",
+    "follow SOLID principles",
+    "comprehensive error handling",
+    "optimize for readability"
+  ]
+}
+
+def role security_expert {
+  persona: "security engineer and penetration tester"
+  principles: [
+    "assume zero trust",
+    "validate all inputs",
+    "principle of least privilege",
+    "defense in depth"
+  ]
+}
+
+def role technical_writer {
+  persona: "technical documentation specialist"
+  principles: [
+    "clear and concise",
+    "plenty of examples",
+    "consider the audience",
+    "maintain consistency"
+  ]
+}
+
+# Cache configuration for expensive operations
+def cache llm_cache {
+  levels: [
+    {
+      name: "memory_cache"
+      storage: "memory"
+      ttl: 300
+      max_size: "50MB"
+    },
+    {
+      name: "disk_cache"
+      storage: "disk"
+      ttl: 3600
+      max_size: "500MB"
+      path: "/tmp/chord_cache"
+    }
+  ]
+  key_strategy: "content_hash"
+}
+
+# Memory for maintaining context across stages
+def memory project_memory {
+  type: "persistent"
+  backend: "sqlite"
+  path: "/tmp/chord_project.db"
+  schema: {
+    decisions: "array<{stage, decision, rationale}>"
+    implementations: "array<{component, version, code}>"
+    issues: "array<{type, severity, resolution}>"
+  }
+}
+
+# Tasks for each stage
+def task plan_architecture {
+  objective: "Create high-level architecture and design"
+  outputs: {
+    architecture_doc: "markdown"
+    component_diagram: "mermaid"
+    api_design: "openapi"
+    technology_choices: "array<{component, technology, rationale}>"
+  }
+}
+
+def task implement_components {
+  objective: "Implement system components based on architecture"
+  inputs: {
+    architecture: "@task.plan_architecture.outputs"
+  }
+  outputs: {
+    components: "array<{name, code, tests}>"
+    integration_points: "array<object>"
+  }
+}
+
+def task security_review {
+  objective: "Perform security analysis and suggest hardening"
+  inputs: {
+    code: "@task.implement_components.outputs.components"
+  }
+  outputs: {
+    vulnerabilities: "array<{severity, description, fix}>"
+    security_score: "number"
+    hardening_suggestions: "array<string>"
+  }
+}
+
+def task optimize_performance {
+  objective: "Optimize critical paths for performance"
+  inputs: {
+    components: "@task.implement_components.outputs.components"
+    metrics: "@signal.performance_requirements"
+  }
+  outputs: {
+    optimizations: "array<{component, before, after, improvement}>"
+    benchmark_results: "object"
+  }
+}
+
+def task generate_documentation {
+  objective: "Create comprehensive documentation"
+  inputs: {
+    architecture: "@task.plan_architecture.outputs"
+    code: "@task.implement_components.outputs"
+    security: "@task.security_review.outputs"
+  }
+  outputs: {
+    api_docs: "markdown"
+    user_guide: "markdown"
+    deployment_guide: "markdown"
+    examples: "array<{title, code, explanation}>"
+  }
+}
+
+# Views for each model/task combination
+def view architecture_planning {
+  task: @task.plan_architecture
+  role: @role.architect
+  model: @model.planner  # GPT-4 for high-level planning
+  cache: @cache.llm_cache
+  
+  selectors: [
+    { from: @ctx.requirements, op: "extract", sections: ["Functional", "Non-Functional"] },
+    { from: @ctx.existing_code, op: "semantic_search", query: "main components architecture", top_k: 10 }
+  ]
+  
+  prompt: {
+    system: "You are {{role.persona}}. Design scalable, maintainable systems.",
+    user: "Based on these requirements, design a comprehensive architecture."
+  }
+}
+
+def view component_implementation {
+  task: @task.implement_components
+  role: @role.developer
+  model: @model.implementer  # Claude Opus for detailed implementation
+  cache: @cache.llm_cache
+  
+  selectors: [
+    { from: @ctx.existing_code, op: "extract", pattern: "class.*:" },
+    { from: @memory.project_memory, op: "retrieve", key: "architecture" }
+  ]
+  
+  prompt: {
+    system: "You are {{role.persona}}. Write production-quality code.",
+    developer: "Architecture: {{architecture}}",
+    user: "Implement the components following the architecture design."
+  }
+}
+
+def view security_analysis {
+  task: @task.security_review
+  role: @role.security_expert
+  model: @model.reviewer  # Claude Sonnet for security review
+  
+  selectors: [
+    { from: @code, op: "grep", pattern: "password|token|secret|api_key", context: 5 },
+    { from: @code, op: "ast_extract", types: ["function"], filter: { name: "auth.*" } }
+  ]
+  
+  prompt: {
+    system: "You are {{role.persona}}. Find and fix security vulnerabilities.",
+    user: "Review this code for security issues. Be thorough and paranoid."
+  }
+}
+
+def view documentation_generation {
+  task: @task.generate_documentation
+  role: @role.technical_writer
+  model: @model.documenter  # GPT-3.5 for cost-effective documentation
+  
+  selectors: [
+    { from: @architecture, op: "summarize", max_tokens: 1000 },
+    { from: @code, op: "extract", pattern: "def.*:", context: 3 }
+  ]
+  
+  prompt: {
+    system: "You are {{role.persona}}. Create clear, helpful documentation.",
+    user: "Generate comprehensive documentation with examples."
+  }
+}
+
+# Advanced flow with conditional branching and parallel execution
+def flow multi_model_pipeline {
+  # Entry point
+  entry: @task.plan_architecture
+  
+  # Parallel execution after planning
+  parallel: {
+    after: @task.plan_architecture
+    tasks: [
+      @task.implement_components,
+      @task.prepare_test_suite
+    ]
+    wait_for: "all"
+  }
+  
+  # Conditional branching based on security score
+  conditional: {
+    after: @task.security_review
+    branches: [
+      {
+        condition: "security_score < 70"
+        path: [
+          @task.fix_vulnerabilities,
+          @task.security_review  # Re-review after fixes
+        ]
+      },
+      {
+        condition: "security_score >= 70 && security_score < 90"
+        path: [@task.apply_hardening]
+      },
+      {
+        condition: "security_score >= 90"
+        path: [@task.mark_security_approved]
+      }
+    ]
+  }
+  
+  # Model selection strategy
+  model_strategy: {
+    rules: [
+      {
+        when: { task_type: "planning", complexity: "high" },
+        use: @model.planner
+      },
+      {
+        when: { task_type: "implementation" },
+        use: @model.implementer
+      },
+      {
+        when: { task_type: "validation", cost_sensitive: true },
+        use: @model.local_validator
+      },
+      {
+        when: { remaining_budget: "< 1.00" },
+        use: @model.local_validator
+      }
+    ]
+    fallback: @model.local_validator
+  }
+  
+  # Error handling with model fallbacks
+  error_handling: {
+    on_model_error: {
+      strategy: "fallback"
+      chain: [
+        @model.implementer,
+        @model.reviewer,
+        @model.local_validator
+      ]
+    }
+    on_timeout: {
+      strategy: "retry_with_smaller_context"
+      max_retries: 3
+      backoff: "exponential"
+    }
+    on_rate_limit: {
+      strategy: "switch_provider"
+      wait_time: 60
+    }
+  }
+  
+  # Cost optimization
+  cost_control: {
+    budget_limit: 10.00
+    tracking: "per_task"
+    when_exceeded: "use_local_models"
+    alerts: [
+      { threshold: 5.00, action: "warn" },
+      { threshold: 8.00, action: "require_confirmation" },
+      { threshold: 10.00, action: "halt" }
+    ]
+  }
+  
+  # Final aggregation
+  converge: {
+    tasks: [
+      @task.generate_documentation,
+      @task.create_deployment_package,
+      @task.run_final_validation
+    ]
+    strategy: "sequential"
+  }
+  
+  # Success criteria
+  success_criteria: {
+    all_tests_pass: true
+    security_score: ">= 80"
+    documentation_complete: true
+    performance_benchmarks_met: true
+  }
+}
+
+# Monitoring and observability
+def hook execution_monitor {
+  trigger: "task_complete"
+  actions: [
+    {
+      type: "log"
+      format: "json"
+      fields: ["task_id", "duration", "model_used", "tokens_used", "cost"]
+    },
+    {
+      type: "metric"
+      name: "task_duration"
+      value: "{{duration}}"
+      tags: ["task:{{task_id}}", "model:{{model_used}}"]
+    },
+    {
+      type: "checkpoint"
+      save: ["outputs", "memory_state"]
+      location: "/tmp/chord_checkpoints/{{task_id}}_{{timestamp}}.json"
+    }
+  ]
+}
+
+# A/B testing different models
+def test model_comparison {
+  views: [@view.architecture_planning, @view.architecture_planning_alt]
+  
+  variants: [
+    { view: @view.architecture_planning, model: @model.planner },
+    { view: @view.architecture_planning, model: @model.implementer }
+  ]
+  
+  metrics: [
+    "execution_time",
+    "output_quality_score",
+    "cost",
+    "token_efficiency"
+  ]
+  
+  sample_size: 10
+  
+  analysis: {
+    method: "statistical_significance"
+    confidence_level: 0.95
+  }
+}
